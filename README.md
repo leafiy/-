@@ -1,1 +1,1 @@
-# 《Javascript高级程序设计》一书的学习笔记
+# 《Javascript语言精粹》一书的学习笔记
