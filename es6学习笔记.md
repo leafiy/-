@@ -643,7 +643,7 @@ let y = [for (year in years) if(year > 2001) year]; //2002,2003,2004
 - 直接写在参数后面可以为参数设定默认值 `function (x,y='haha')`
 - 参数变量是默认声明的，不能再用 `let` `const` 声明
 
-### 与解构赋值默认值结合
+#### 与解构赋值默认值结合
 
 - 函数参数默认值可以与解构赋值结合使用
 
@@ -659,16 +659,16 @@ function m1({x=0,y=0}={}){};  //参数的默认值是空对象，触发了解构
 function m2({x,y}={x:0,y:0}){}; //参数是一个有具体属性的对象，不会触发解构赋值默认值
 ```
 
-### 参数默认值的位置
+#### 参数默认值的位置
 
 - 定义了默认值的参数应该是尾参数，比较容易看出省略了哪些参数，且参数无法省略
 - 传入undefined将触发默认值，null则不行
 
-### 函数的length
+#### 函数的length
 
 - 函数的 `length` 属性将返回没有指定默认值的参数的个数（`...` 参数不会记入）
 
-### 作用域
+#### 默认参数的作用域
 
 - 如果参数的默认值是变量，该变量所处的作用域与其他变量一致，先是当前函数的作用域之后是全局
 
@@ -685,5 +685,469 @@ function f2(yy=xx){
   console.log(yy);
 }
 f2(); //1 参数yy的默认值变量xx尚未在函数内部生成所以yy指向全局变量xx
+
+function f3(yyy = xxx){
+  let xxx = 2; //全局变量xxx不存在
+  console.log(yyy);
+}
+f3(); //ReferenceError: xxx is not defined(…)
 ```
+
+- 如果参数的默认值是一个函数，由于**函数的作用域是其声明时所在的作用域**，作为参数的函数的作用域就是不是接受参数的函数，而是全局作用域
+
+```javascript
+let foo = 'outer';
+function bar(func = x=> foo){ //声明的func作用域是全局
+  let foo = 'inner';
+  console.log(func());
+};
+bar(); //outer
+```
+
+> 利用函数参数默认值可以设定某个参数不得省略（默认值等于抛出错误的方法）
+>
+> 默认值设置为undefined可以表明参数可忽略
+
+### rest参数
+
+- `...variable` 用于获取函数的多余参数，不需要使用`arguments` 对象，`rest` 参数搭配的变量是一个数组，该变量将多余的参数放入其中
+- 所有数组的方法都可以用于rest参数
+- rest参数只能用于最后一个参数，函数的`length` 属性不包括rest参数
+
+```javascript
+function add(...values){
+  let sum = 0;
+  for (let val of values){
+    sum += val;
+  }
+  return sum;
+}
+add(2,3,4); //9
+```
+
+### 扩展运算符
+
+- 扩展运算符是 `…` ，类似于 rest参数的逆运算，讲一个数组转为用逗号分隔的参数序列
+
+```javascript
+console.log(...[1,2,3]); //1 2 3
+```
+
+#### 代替数组的apply
+
+- 不需要用 `apply` 方法将数组转为参数
+
+```javascript
+Math.max(...[23,2,4,12,34,4]); //34
+let arr1 = [1,2,3];
+let arr2 = [5,6,7];
+arr1.push(...arr2)；
+
+let d = new Date(...[2011,3,1]); //Fri Apr 01 2011 00:00:00 GMT+0800 (CST)
+```
+
+#### 扩展运算符的应用
+
+##### 合并数组
+
+`[1,2,...array]`
+
+##### 与解构赋值结合
+
+```javascript
+const [first,...rest] = [1,2,3,4,5]; //只能放在最后一位
+first; //1
+rest; //[2,3,4,5]
+```
+
+##### 函数的返回值
+
+- 将函数返回的数组或对象直接传入其他函数
+
+##### 字符串
+
+- 将字符串转为真正的数组，而且可以识别32位的unicode字符
+
+```javascript
+function length(str){
+  return [...str].length;
+}
+length('𠮷'); //1
+
+let arr = ['𠮷','𠮷a','𠮷𠮷'];
+[...arr].reverse().join(''); //𠮷𠮷𠮷a𠮷
+
+let str = '𠮷a𠮷𠮷aa𠮷𠮷';
+[...str].reverse().join(''); //𠮷𠮷aa𠮷𠮷a𠮷
+```
+
+##### 将类似数组的对象转为数组
+
+`[...document.querySelectorAll('div')]`
+
+##### Map 、Set 、Generator函数
+
+- 扩展运算符内部调用的是数据结构的 iterator 接口
+
+```javascript
+let map = new Map([
+  [1,'a'],
+  [2,'b']
+])
+[...map.keys()]; //[1,2]
+
+let go = function* (){
+  yield 1;
+  yield 2;
+}
+[..go()]; //[1,2] 将内部遍历得到的值转为数组
+```
+
+### name属性
+
+- 返回函数名，将匿名函数赋值给一个变量，会返回实际函数名
+- `Function` 构造函数返回的函数实例，name为anonymous
+- `bind` 返回的函数，name属性前会加上 `bound` 前缀
+
+```javascript
+function foo(){};
+foo.bind({}).name; //bound foo
+(function(){}.bind({})).name //bound
+```
+
+### 箭头函数
+
+#### 基本用法
+
+- 使用 `=>` 定义函数 `let f = v => v` 等同于 `function f(v){return v}`
+- 如果箭头函数不需要参数或需要多个参数，可用`()` 代表参数部分 `let sum = (x,y,z) => x+y+z`
+- 如果需要返回一个对象，需要用 `()`  `let getObj = id => ({id:1})`
+- 与解构赋值结合 `let full = ({a,b}) => a+b` `full({a:'a',b:'b'})`
+- 与rest参数结合 `let numbers = (...nums) => nums`
+
+#### 注意事项
+
+- 箭头函数内部的 `this` 对象是定义时所在的对象，而不是使用时所在的对象（箭头函数内部没有this对象，内部this就是外层代码块的this）
+- 不可当做构造函数，不能使用 `new` 操作符
+- 不可以使用 `arguments` 对象，可用rest参数代替，在内部使用 `arguments` 对象时，其实是外层函数的 `arguments` 对象
+- 不可使用 `yield` 命令，不可作为Generator函数
+- `bind()` `call()` `apply()` 方法无效
+
+```javascript
+function Timer(){
+  this.seconds = 0;
+  setInterval(() => this.seconds++,1000);
+};
+let timer = new Timer();
+setTimeout(() => console.log(timer.seconds),3100); //3
+```
+
+#### 嵌套箭头函数
+
+- 箭头函数内部可以继续使用箭头函数，实现函数嵌套
+
+```javascript
+let insert = (value) => ({into:(array) => ({after:(afterValue) => {
+  array.splice(array.indexOf(afterValue)+1, 0 ,value);
+  return array;
+}})});
+insert(2).into([1,3]).after(1); //[1, 2, 3]
+```
+
+### 函数绑定 *（ES7，需要babel）*
+
+> 用来取代 `bind()` `call()` `apply()` 调用
+
+- 使用 `::` 左边是对象，右边是函数，该运算符会自动将左边的对象作为上下文环境绑定到右边的函数上
+- 如果 `::` 左边为空，右边为一个对象的方法，则等于将该方法绑定在该对象上
+- 返回的对象还是原对象
+
+```javascript
+foo:bar;
+//等同于
+bar.bind(foo);
+
+foo:bar(...arguments);
+//等同于
+bar.apply(foo,arguments);
+
+const hasOwnProperty = Object.hasOwnProperty;
+function hasOwn(obj,key){
+  return obj::hasOwnProperty(key);
+}
+
+let method = ::obj.foo; //等同于 obj::obj.foo
+
+document.querySelectorAll('div')::find('p')::html('hahaha');
+//等同于ES5中
+var _context;
+(_context = (_context = document.querySelectorAll('div'), find).call(_context, 'p'), html).call(_context, 'hahaha');
+```
+
+### 尾调用优化
+
+> 指函数的**最后一步**是调用另一个函数，不一定在函数尾部
+
+```javascript
+function f(x){
+  return g(x);
+};
+```
+
+#### 优化
+
+- 不再用到外层函数的内部变量，内层函数的调用帧会取代外层函数的调用帧
+
+#### 尾递归
+
+- 尾调用自身
+- ***只有严格模式才会启用尾递归优化***
+
+```javascript
+function f(n){
+  if(n===1) return 1;
+  return n * f(n-1); //没有尾调用优化，复杂度为O(n)
+}
+//改为尾递归
+function f2(n,total){
+  if(n===1) return 1;
+  return f2(n-1,n*total)
+}
+```
+
+#### 递归函数改写
+
+- 把所有用到的内部函数改写成参数形式，可以使用<u>柯里化</u>将原本的函数改为只接受一个参数的函数，或者使用ES6中的函数参数默认值
+
+### ~~函数参数的尾逗号 （ES7）~~
+
+- 函数定义和调用时都不允许参数有尾逗号
+
+---
+
+
+
+## 八、对象的扩展
+
+### 属性的简洁表示法
+
+- 直接写入变量和函数作为对象的属性和方法
+- 只写属性名不写属性值时，属性值等于属性名所代表的变量
+- 属性的赋值器 `getter` 和取值器 `setter` 也可简写
+- 简洁写法中的属性名永远是字符串
+
+```javascript
+let foo = 'bar';
+let baz = {foo};
+baz; //{foo:'bar'}
+
+function f(x,y){
+  return {x,y}; //等同于 return {x:x,y:y}
+}
+f(1,2); //Object {x: 1, y: 2}
+
+let obj ={
+  name:'shabi',
+  hello(){
+    console.log(this.name) //等同于 hello = function()
+  },
+  age, //等同于 age:age
+  * m(){
+    yield 1; //m() 是一个Generator函数
+  },
+  get get_name(){
+    return this.name + '?'
+  },
+  set set_name(name){
+    this.name = name;
+  }
+}
+
+module.exports = {a,b,c}; //等同于 module.exports = {a:a,b:b,c:c}
+```
+
+### 属性名表达式
+
+- 字面量定义对象时，可以把表达式放在方括号 `[]` 中
+- 不能与属性间接表示法混用
+
+```javascript
+let str = 'hi';
+let obj = {
+  [str]:'hello',
+  ['h'+'ello'](){
+    console.log('haha')
+  }
+}
+
+let foo = 'bar';
+let baz = {[foo]:'abc'}; //Object {bar: "abc"}
+```
+
+### Object.is()
+
+- 比较两个值是否严格相等 `Object.is(+0,-0) === false` `Object.is(NaN,NaN) === true`
+
+### Object.assign()
+
+- 将来源对象所有的可枚举属性（包括 `Symbol` ）复制（并覆盖）到目标对象
+- 合并数组时，会将数组视为属性名为0,1,2的对象 `Object.assign([1,2,3],[4,5]) == [4,5,3]`
+
+#### 为对象添加属性
+
+```javascript
+class Point{
+  constructor(x,y){
+    Object.assign(this,{x,y}); //将x、y属性添加到Point类的对象实例
+  }
+}
+```
+
+#### 为对象添加方法
+
+```javascript
+Object.assign(someClass.prototype,{
+  method(){},
+  method2(){}
+})
+```
+
+#### 克隆对象
+
+```javascript
+function clone(obj){
+  return Object.assign({},obj); //仅克隆原始对象自身的值，不能克隆它继承的值
+  //可隆obj继承的属性
+  let objProto = Object.getPrototypeOf(obj);
+  return Object.assign(Object.create(objProto),obj);
+  //简写为
+  Object.assign({ __proto__: obj.__proto__ }, obj)
+}
+```
+
+#### 合并多个对象
+
+```javascript
+const merge = (target,...sources) => Object.assign(target,...sources);
+const mergeAsNew = (...sources) => Object.assign({},...sources);
+```
+
+#### 为属性指定默认值
+
+```javascript
+const DEFAULTS = {a:1,b:2};
+let options = Object.assign({},DEFAULTS,option)
+```
+
+### 属性的可枚举性
+
+>  实际操作中，尽量使用 `Object.keys()` 代替 `for-in` 循环
+
+- 对象的每一个属性都有一个描述对象，用于控制该属性的行为
+- `for-in` `Object.keys()` `JSON.stringify()` `Object.assign()` `Reflect.enumerate()`  方法会忽略描述对象的 `enumerable` 属性为false的属性
+
+### 属性的遍历
+
+- `for-in` 遍历对象自身的和继承的可枚举属性（不包含Symbol属性）
+- `Object.keys()` 返回对象自身，不包含继承和Symbol的，所有可枚举属性的数组
+- `Object.getOwnPropertyNames(obj)` 返回自身所有属性和不可枚举属性的数组，不包含Symbol属性
+- `Object.getOwePropertySymbols(obj)` 返回自身所有Symbol属性的数组
+- `Reflect.ownKeys(obj)` 返回自身、Symbol、无论是否枚举的全部属性
+- `Reflect.enumerate(obj)` 返回Iterator对象，遍历对象自身的和继承的所有可枚举属性（不含Symbol，与`for-in` 一致）
+
+### ~~_\_ proto\_\_ 属性~~
+
+- 用来读取当前对象的 `prototype` 对象，不要使用
+
+### Object.setPrototypeOf() 、 Object.getPrototypeOf()
+
+- `Object.setPrototypeOf()` 用于设置一个对象的 `prototype` 对象
+- `Object.getPrototypeOf()` 用于读取一个对象的 `prototype` 对象
+
+```javascript
+Object.setPrototypeOf(object,prototype);
+
+let proto = {};
+let obj = {x:10};
+Object.setPrototypeOf(obj, proto);
+proto.x = 30;
+proto.y = 20;
+obj.x; //10
+obj.y; //20
+
+function Func(){};
+let func = new Func();
+Object.getPrototypeOf(func) === Func.prototype; //true
+```
+
+### 对象扩展运算符 *ES7，需要Babel*
+
+#### rest参数
+
+- 将所有可遍历但尚未读取的属性，分配到指定的对象上
+- 浅复制，只是引用不是副本，不会赋值继承自圆形的对象
+
+```javascript
+let {x,y,...z} = {x:1,y:2,a:3,b:4};
+x //1
+y //2
+z //{a:3,b:4}
+```
+
+#### 扩展运算符
+
+- 取出参数对象的所有可遍历属性，复制到当前对象中
+- 扩展运算符遇到 `get` 取值函数时，`get` 是会执行的
+
+```javascript
+let z = {a:3,b:5};
+let n = {...z};
+n; //{a:3,b:5}
+
+{...a} === Object.assign({},a);
+{...a,...b} === Object.assign(a,b);
+```
+
+---
+
+
+
+## 九、Symbol
+
+- ES6中新的数据类型，表示独一无二的值，通过 `Symbol` 函数生成 `let n=Symbol('n'); typeof n==='symbol'`
+- Symbol是原始类型的值，不是对象，**不能与其他值做运算**
+- Symbol函数的参数只表示对当前Symbol值的描述，相同参数的Symbol返回的值不相等
+- Symbol值可以显式转为字符串，不能转为数值 `Symbol('MySymbol').toString(); 'Symbol(MySymbol)'`
+
+### 作为属性名的Symbol
+
+- Symbol可以作为标识符用于对象的属性名，保证不会出现同名的属性
+- Symbol作为对象属性名的时候不能使用 `.` 点运算符
+- Symbol所谓属性名时，该属性是公开的不是私有属性
+- Symbol可用于定义常量，保证常量的值都是不相等的
+
+```javascript
+let mySymbol = Symbol();
+let o1 = {};
+o1[mySymbol] = 'hello';
+let o2 = {[mySymbol]:'hello'};
+let o3 = {};
+Object.defineProperty(o3,mySymbol,{value:'hello'});
+```
+
+实例：消除魔术字符串
+
+> 在代码中多次出现，与代码形成强耦合的某一个具体的字符串或数值，良好的的代码应尽量消除魔术字符串
+>
+> 将常出现的字符串使用Symbol定义为一个常量即可
+
+### Symbol属性名的遍历
+
+- `Object.getOwnPropertySymbols(obj)` 方法获取指定对象的所有Symbol属性名，返回数组
+
+### Symbol.for()、Symbol.keyFor()
+
+- `Symbol.for()` 可以重新使用一个Symbol值，接受一个字符串参数，搜索以该字符串作为名称的Symbol值，如果有返回这个Symbol值，没有则使用该字符串新建一个Symbol值 `Symbol.for('ha') === Symbol.for('ha')`
+- `Symbol.keyFor()` 返回一个已登记的Symbol类型值的key `Symbol.keyFor(Symbol.for('ha')) === 'ha'`
+- `Symbol.for()` 为Symbol值登记的名字是全局环境，可跨 Iframe 或 worker 使用
 
