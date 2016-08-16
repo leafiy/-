@@ -502,5 +502,188 @@ withinErrorMargin(0.1+0.2,0.4) //false
 
 ## 六、数组的扩展
 
+### Array.from()
 
+- 用于将类似数组的对象和可遍历的对象转为真正的数组
+  - Array-like object 必须拥有 `length` 属性
+- 可以将部署了 `Iterator` 接口的数据结构转为数组
+- 使用扩展运算符 `…` 也可以将某些数据结构转为数组
+- 第二个参数用来对每个元素进行处理，类似`map` ，可用第一个参数的 `length` 属性指定第二个参数的运行次数
+- 将字符串转为数组可以精确得到字符串长度
+
+```javascript
+let arrayLike = {0:'a',1:'b',2:'c',length:3}
+let arr = Array.from(arrayLike); //[a,b,c]
+
+let ps = document.querySelectorAll('p');
+Array.from(ps).forEach(function(p){
+  console.log(p);
+})
+[...doucment.querySelectorAll('p')]
+
+function foo(){
+  var args = Array.from(arguments);
+  var args = [...arguments]
+}
+Array.from('hello𠮷'); //[h,e,l,l,o,𠮷].length = 6
+let nameSet = new Set(['a','b']);
+Array.from(nameSet); //[a,b]
+Array.from([1,2,3],(x) => x * x); //[1,4,9]
+Array.from({length:2},() => 'jack'); //[jack,jack]
+```
+
+### Array.of()
+
+- 用于将一组值转为数组，不存在由于参数个数不同导致的重载，可代替 `Array()` 和 `new Array()`
+
+```javascript
+Array.of(); //[]
+Array.of(3); //[3]
+Array.of(2,3); //[2,3]
+```
+
+### copyWithin()
+
+- 在当前数组内部将指定位置的成员复制（并覆盖）到其他位置 
+- `Array.prototype.copyWithin(target, start=0, end=this.length)`
+  - target ：从该位置开始替换数序（必须）
+  - start ： 从该位置开始读取数据，默认为0，负数表示倒数（可选）
+  - end ： 到该位置前停止读取数据，默认等于数组长度，负数表示倒数
+
+```javascript
+[1,2,3,4,5].copyWithin(0,3); //[4,5,3,4,5]
+[1,2,3,4,5].copyWithin(0,3,4); //[4,2,3,4,5]
+[1,2,3,4,5].copyWithin(0,-2,-1); //[4,2,3,4,5]
+[].copyWithin.call({length:5,3:1},0,3); //{0: 1, 3: 1, length: 5}
+```
+
+### find() 和 findIndex()
+
+- `find()` 找出第一个符合条件的数组成员，参数是一个回调函数，所有数组成员依次执行该回调函数，直到第一个为true的成员并返回
+- `findIndex()` 找出第一个符合条件的成员的位置，没找到返回 -1
+- 两个方法都可以发现 `NaN` 
+
+```javascript
+[1,6,3,4].find((n) => n%2 == 0); //6
+[1,5,10,15].find(function(value,index,arr){
+  return value > 10;
+}) // 15
+
+[1,5,10,15].findIndex(function(value,index,arr){
+  return value > 10;
+}) // 3
+```
+
+### fill()
+
+- 使用指定值填充数组，可用于初始化空数组，会抹去数组中已有的元素
+- 第二、三个参数表示填充的起始位置和结束位置
+
+### entries()、keys()、 values()
+
+- 都返回一个遍历器对象，可使用 `for-of` 遍历
+
+```javascript
+for (let index of ['a','b'].keys()){
+  console.log(index)//0,1
+}
+
+for (let elem of ['a','b'].values()){
+  console.log(elem)//0,1 need polyfill
+}
+
+for (let [index,elem] of ['a','b'].entries()){
+  console.log(index,elem)
+  //0 "a"
+  //1 "b
+}
+```
+
+### includes() *需要babel*
+
+- 表示数组是否包含给的值，第二个参数表示开始搜索的位置，可以找到 `NaN` 
+
+### 数组的空位
+
+- 指数组某一位置没有任何值，es6中的方法不会忽略空位而将空位转成undefined
+
+> 空位不是undefined，一个位置的值等于undefined但依然是有值的，空位没有任何值，es5与es6处理空位方式不同所以不要出现空位
+
+### 数组推导 *ES7 需要babel*
+
+- 直接通过现有数组生成新的数组
+- `for-of` 语句需要在前面，返回表达式写在后面
+- 可以代替 `map` 和 `filter` 方法
+- 数组推导的方括号 `[]` 构成了一个单独的作用域
+
+```javascript
+let arr = [1,2,3,4];
+let arr2 = [for (i of arr) i*2]; //[2,4,6,8]
+
+let years = [2001,2002,2003,2004];
+let y = [for (year in years) if(year > 2001) year]; //2002,2003,2004
+
+[for (i of [1,2,3]) i*2];
+//等同于
+[1,2,3].map(function(i){return i*2});
+
+[for (i of [1,2,3]) if (i < 3) i];
+//等同于
+[1,2,3].filter(function(i){return i<3});
+```
+
+---
+
+
+
+## 七、函数的扩展
+
+### 函数参数的默认值
+
+- 直接写在参数后面可以为参数设定默认值 `function (x,y='haha')`
+- 参数变量是默认声明的，不能再用 `let` `const` 声明
+
+### 与解构赋值默认值结合
+
+- 函数参数默认值可以与解构赋值结合使用
+
+```javascript
+function foo({x,y=5}){
+  console.log(x,y);
+}
+foo(); //报错 参数不是变量没有触发解构赋值
+foo({}); //undefined 5
+foo({x:1}); //1 5
+
+function m1({x=0,y=0}={}){};  //参数的默认值是空对象，触发了解构赋值的默认值
+function m2({x,y}={x:0,y:0}){}; //参数是一个有具体属性的对象，不会触发解构赋值默认值
+```
+
+### 参数默认值的位置
+
+- 定义了默认值的参数应该是尾参数，比较容易看出省略了哪些参数，且参数无法省略
+- 传入undefined将触发默认值，null则不行
+
+### 函数的length
+
+- 函数的 `length` 属性将返回没有指定默认值的参数的个数（`...` 参数不会记入）
+
+### 作用域
+
+- 如果参数的默认值是变量，该变量所处的作用域与其他变量一致，先是当前函数的作用域之后是全局
+
+```javascript
+var x = 1;
+function f1(x,y=x){
+  console.log(y)
+}
+f1(2); //2 参数y的默认值等于x，由于函数作用域内部变量x已经生成，所以y等于参数x而不是全局变量x
+
+let xx = 1;
+function f2(yy=xx){
+  let xx = 2;
+  console.log(yy);
+}
+f2(); //1 参数yy的默认值变量xx尚未在函数内部生成所以yy指向全局变量xx
+```
 
