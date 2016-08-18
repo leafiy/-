@@ -1151,3 +1151,48 @@ Object.defineProperty(o3,mySymbol,{value:'hello'});
 - `Symbol.keyFor()` 返回一个已登记的Symbol类型值的key `Symbol.keyFor(Symbol.for('ha')) === 'ha'`
 - `Symbol.for()` 为Symbol值登记的名字是全局环境，可跨 Iframe 或 worker 使用
 
+---
+
+
+
+## 十、Proxy、Reflect
+
+### Proxy概述
+
+- 在目标对象前架设拦截操作，外界对该对象的修改访问必须先通过这层拦截
+- 作为构造函数的Proxy接受两个参数：所要代理的目标对象、处理函数
+- 要使Proxy起作用，必须针对Proxy实例操作，不是针对原对象操作
+
+```javascript
+//将Proxy对象设置为对象的属性，可以在object上直接调用
+let obj = {proxy: new Proxy(target,handler)};
+
+//Proxy可以作为对象原型
+let p = new Proxy({},{
+  get:function(target, property){
+    return 35;
+  }
+})
+let p1 = Object.create(p);
+obj.time; //35
+```
+
+| Proxy拦截操作                                | 说明                                       |
+| ---------------------------------------- | ---------------------------------------- |
+| get(target,prop,receiver)                | 拦截对象属性的读取target为目标对象，prop为属性名，receiver（可选）对象会绑定get函数的this |
+| set(target,prop,value,receiver)          | 拦截对属性的设置，当对象设置了prop的get函数时，receiver会绑定get函数的this |
+| has(target,prop)                         | 拦截prop in proxy操作，返回布尔值                  |
+| deleteProperty(target,prop)              | 拦截delete proxy[prop]的操作，返回布尔值            |
+| enumerate(target)                        | 拦截for (let x in proxy)，返回一个遍历器           |
+| ownKeys(target)                          | 拦截Object.getOwnPropertyNames(proxy)、Object.getOwnPropertySymbols(proxy)、Object.keys(proxy)，返回数组。该方法返回对象所有自身属性，Object.keys()仅返回可遍历属性 |
+| getOwnPropertyDescriptor(target,prop)    | 拦截Object.getOwnPropertyDescriptor(prop,propKey)，返回属性的描述对象 |
+| defineProperty(target,propKey,propDes)   | 拦截Object.defineProperty(proxy,propKey,propDesc)、Object.definePropertise(proxt,propDescs)，返回布尔值 |
+| preventExtensions(proxy)                 | 拦截Object.preventExtensions(proxy)，返回布尔值  |
+| getPrototypeOf(target)                   | 拦截Object.getPrototypeOf(proxy)，返回对象      |
+| isExtensible(target)                     | 拦截Object.isExtensible(target)，返回布尔值      |
+| setPrototypeOf(target)                   | 拦截Object.setPrototype(proxy)，返回布尔值       |
+| apply(target,obj,args) （**仅目标对象是函数**）    | 拦截Proxy实例作为函数调用的操作：proxy(...args)，proxy.call(object,...args)，proxy.apply(...) |
+| construct(target,args,proxy)（**仅目标对象是函数**） | 拦截Proxy作为构造函数被调用的操作：new proxy(…args)     |
+
+### Proxy实例方法
+
