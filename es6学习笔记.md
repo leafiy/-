@@ -504,8 +504,7 @@ withinErrorMargin(0.1+0.2,0.4) //false
 
 ### Array.from()
 
-- 用于将类似数组的对象和可遍历的对象转为真正的数组
-  - Array-like object 必须拥有 `length` 属性
+- 用于将类似数组的对象（Array-like object）和可遍历的对象转为真正的数组，**必须拥有 `length` 属性**
 - 可以将部署了 `Iterator` 接口的数据结构转为数组
 - 使用扩展运算符 `…` 也可以将某些数据结构转为数组
 - 第二个参数用来对每个元素进行处理，类似`map` ，可用第一个参数的 `length` 属性指定第二个参数的运行次数
@@ -539,7 +538,7 @@ Array.from({length:2},() => 'jack'); //[jack,jack]
 ```javascript
 Array.of(); //[]
 Array.of(3); //[3]
-Array.of(2,3); //[2,3]
+Array.of(2,3); //[2,3] 参数个数不同的情况下不影响生成结果
 ```
 
 ### copyWithin()
@@ -559,7 +558,7 @@ Array.of(2,3); //[2,3]
 
 ### find() 和 findIndex()
 
-- `find()` 找出第一个符合条件的数组成员，参数是一个回调函数，所有数组成员依次执行该回调函数，直到第一个为true的成员并返回
+- `find()` 找出第一个符合条件的数组成员，接受一个回调函数，数组所有成员依次执行该回调函数，直到第一个为true的成员并返回
 - `findIndex()` 找出第一个符合条件的成员的位置，没找到返回 -1
 - 两个方法都可以发现 `NaN` 
 
@@ -589,7 +588,7 @@ for (let index of ['a','b'].keys()){
 }
 
 for (let elem of ['a','b'].values()){
-  console.log(elem)//0,1 need polyfill
+  console.log(elem)//a,b chrome needs polyfill
 }
 
 for (let [index,elem] of ['a','b'].entries()){
@@ -605,7 +604,7 @@ for (let [index,elem] of ['a','b'].entries()){
 
 ### 数组的空位
 
-- 指数组某一位置没有任何值，es6中的方法不会忽略空位而将空位转成undefined
+- 指数组某一位置没有任何值，**es6中的方法不会忽略空位而将空位转成undefined**
 
 > 空位不是undefined，一个位置的值等于undefined但依然是有值的，空位没有任何值，es5与es6处理空位方式不同所以不要出现空位
 
@@ -1162,6 +1161,7 @@ Object.defineProperty(o3,mySymbol,{value:'hello'});
 - 在目标对象前架设拦截操作，外界对该对象的修改访问必须先通过这层拦截
 - 作为构造函数的Proxy接受两个参数：所要代理的目标对象、处理函数
 - 要使Proxy起作用，必须针对Proxy实例操作，不是针对原对象操作
+- Proxy 实例的get、set方法可以继承
 
 ```javascript
 //将Proxy对象设置为对象的属性，可以在object上直接调用
@@ -1181,9 +1181,9 @@ obj.time; //35
 | ---------------------------------------- | ---------------------------------------- |
 | get(target,prop,receiver)                | 拦截对象属性的读取target为目标对象，prop为属性名，receiver（可选）对象会绑定get函数的this |
 | set(target,prop,value,receiver)          | 拦截对属性的设置，当对象设置了prop的get函数时，receiver会绑定get函数的this |
-| has(target,prop)                         | 拦截prop in proxy操作，返回布尔值                  |
+| has(target,prop)                         | 拦截prop in proxy操作，返回布尔值（隐藏属性，不被in发现，不过滤for-in） |
 | deleteProperty(target,prop)              | 拦截delete proxy[prop]的操作，返回布尔值            |
-| enumerate(target)                        | 拦截for (let x in proxy)，返回一个遍历器           |
+| enumerate(target)                        | 拦截for (let x in proxy)，返回一个遍历器（过滤 for-in），必须返回对象 |
 | ownKeys(target)                          | 拦截Object.getOwnPropertyNames(proxy)、Object.getOwnPropertySymbols(proxy)、Object.keys(proxy)，返回数组。该方法返回对象所有自身属性，Object.keys()仅返回可遍历属性 |
 | getOwnPropertyDescriptor(target,prop)    | 拦截Object.getOwnPropertyDescriptor(prop,propKey)，返回属性的描述对象 |
 | defineProperty(target,propKey,propDes)   | 拦截Object.defineProperty(proxy,propKey,propDesc)、Object.definePropertise(proxt,propDescs)，返回布尔值 |
@@ -1192,7 +1192,23 @@ obj.time; //35
 | isExtensible(target)                     | 拦截Object.isExtensible(target)，返回布尔值      |
 | setPrototypeOf(target)                   | 拦截Object.setPrototype(proxy)，返回布尔值       |
 | apply(target,obj,args) （**仅目标对象是函数**）    | 拦截Proxy实例作为函数调用的操作：proxy(...args)，proxy.call(object,...args)，proxy.apply(...) |
-| construct(target,args,proxy)（**仅目标对象是函数**） | 拦截Proxy作为构造函数被调用的操作：new proxy(…args)     |
+| construct(target,args,proxy)（**仅目标对象是函数**） | 拦截Proxy作为构造函数被调用的操作：new Proxy(…args)，必须返回一个对象 |
 
-### Proxy实例方法
+### Proxy.revocable()
 
+- 返回一个可取消的Proxy实例
+
+```javascript
+let target = {},handler = {};
+let {proxy,revoke} = Proxy.revocable(target,handler);
+revoek();
+proxy.name; //cannot perform 'get' on a proxy that has been revoked
+```
+
+### Reflect
+
+- 将Object对象的属于语言层面的方法放到Reflect对象上
+- 优化一些Object方法的返回结果，`Object.definePrototype(obj,name,desc)` 在无法定义时会出错，`Reflect.defindProperty(obj,name,desc)` 则会返回false
+- 让Object操作由命令式变为函数行为 `name in obj ` 变为 `Reflect.has(obj,name)`
+- Reflect对象与Proxy对象操作方法一一对应，无论Proxy如何修改默认行为，总是可以在Reflect对象上获取默认行为-
+- Reflect对象方法大部分与Proxy相同
