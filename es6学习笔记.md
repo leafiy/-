@@ -1,3 +1,7 @@
+# ES6学习笔记
+
+
+
 ## 一.let 和 const 命令
 
 ### let
@@ -1212,3 +1216,221 @@ proxy.name; //cannot perform 'get' on a proxy that has been revoked
 - 让Object操作由命令式变为函数行为 `name in obj ` 变为 `Reflect.has(obj,name)`
 - Reflect对象与Proxy对象操作方法一一对应，无论Proxy如何修改默认行为，总是可以在Reflect对象上获取默认行为-
 - Reflect对象方法大部分与Proxy相同
+
+---
+
+
+
+## 十一、Map、Set
+
+### Set
+
+- 类似于数组，但是成员的值都是唯一的
+- 可使用数组初始化
+
+```javascript
+let s = new Set();
+[1,2,3].map(x => s.add(x));
+```
+
+#### Set实例的属性和方法
+
+- `Set.prototype.constructor` 构造函数，默认是Set函数
+- `Set.prototype.size`返回Set实例的成员总数
+- `add(value)` 添加某个值，返回Set结构本身
+- `delete(val)` 删除某个值，返回布尔表示是否删除成功
+- `has(value)` 是否为Set的成员
+- `clear()` 清楚成员，无返回值
+- `Array.from()` 可以将Set转为数组，实现数组去重 `Array.from(new Set(array))`
+
+#### Set遍历
+
+- `keys()` 返回键名遍历器，Set没有键名，keys与values行为一致
+- `values()` 返回键值遍历器，是Set实例默认遍历器生成函数
+- `entries()` 返回键值对遍历器
+- `forEach()` 使用回调函数遍历每个成员
+
+```javascript
+let s = new Set(['a','b','c']);
+let arr = [...set]; //a,b,c
+
+//利用Set结构和...扩展运算符实现map、filter、unique、union、交集、差集方法
+set = new Set([...s].map(x => x+'1')); //a1,b1,c1
+let unique = [...new Set(array)];
+
+let a = new Set([1,2,3]);
+let b = new Set([2,3,4]);
+let union = new Set([...a,...b]); //1,2,3,4
+let intersect = new Set([...a].filter( x => b.has(x))); //2,3
+let diff = new Set([...a].filter(x => !b.has(x))); //1
+```
+
+### WeakSet
+
+- 于Set类似，不重复值集合，但是成员必须是对象
+- WeakSet所有成员都是对象的弱引用（其他对象不再引用时被回收），所以不能遍历（可用于存储DOM节点，不会发生节点移除时的内存泄露）
+
+### Map
+
+- 用于解决对象键名只能使用字符串的问题
+- Object结构提供了「字符串-值」对应，Map提供了「值-值」的对应，更适合「键」-「值」的结构
+- **只有对同一个对象引用的Map，Map结构才将其视为同一个键**，相同对象/数组为键的值不相同（键与内存地址绑定）
+
+```javascript
+let m = new Map();
+let o = {name:'sb'};
+m.set(o,'shabi'); //使用一个对象作为键名
+m.get(o); //shabi
+m.has(o); //true
+
+let items = [['name','shabi'],['age','55']];
+let map = new Map();
+items.forEach(([key,value] => map.set(key,value));
+map; //Map {"name" => "shabi", "age" => "55"}
+              
+map.set(['g'],'aaa');
+map.get(['g']); //undefined
+```
+
+#### Map实例的属性和操作方法
+
+- `size` 属性 - 返回成员数量
+
+
+- `set(key,value)` 方法设置 `key` 所对应的键值，然后返回整个Map结构，如果 `key` 已经有值，则键值会被更新
+- `set` 方法返回的是Map本身，可以链式操作
+- `get(key)` 读取 `key` 对应的键值
+- `has(key)` 返回布尔表示 `key` 是否在Map结构中
+- `delete(key)` 删除某个键，成功返回true
+- `clear()` 清除所有成员，没有返回值
+
+#### Map的遍历方法
+
+- `keys()` 返回键名遍历器
+- `values()` 返回键值遍历器
+- `entries()` 返回键值对遍历器，默认遍历接口（Symbol.iterator属性）
+- `forEach()` 使用回调函数遍历每个成员
+- Map本身没有 `map` 和 `filter` 方法，可以使用扩展运算符 `…` 转为数组后实现
+- Map有 `forEach` 方法，可接受第二个参数用于绑定 `this` 
+
+#### Map与其他数据类型互相转换
+
+- 使用扩展运算符 `…` 转为数组
+
+```javascript
+let map = new Map().set('true','1').set('name','shabi').set({foo:3},['a','b']);
+let arr = [...map];
+```
+
+- 将数组传入Map构造函数转为Map
+
+```javascript
+new Map([['name','shabi'],['age','55']]); //注意结构
+```
+
+- Map与Object互转
+
+```javascript
+function mapToObj(map){
+  let obj = Object.create(null);
+  for (let [key,valule] of map){
+    obj[key] = value
+  }
+  return obj;
+}
+function objToMap(obj){
+  let map = new Map();
+  for (let key of Object.keys(obj)){
+    map.set(key,obj[key]);
+  }
+  return map;
+}
+```
+
+- Map与JSON互转
+
+```javascript
+//map的键名都是字符串
+function mapToJSON(map){
+  return JSON.stringify(mapToObj(map));
+}
+function JSON2Map(json){
+  return objToMap(JSON.parse(json));
+}
+//map键名中有非字符串，将map转为数组JSON
+function mapToJSON(map){
+  return JSON.stringify([...map]);
+}
+function JSON2Map(json){
+  return new Map(JSON.parse(json));
+}
+```
+
+### WeakMap
+
+- 键名所指的对象有可能会被回收，可利用储存DOM元素，元素被移除后WeakMap记录也会移除，防止内存泄露，没有遍历操作，无法清空
+
+```javascript
+let el = document.getElementById('ss');
+let wm = new WeakMap();
+wm.set(el,{clickCount:0})
+el.addEventListener('click',function(){
+  let data = wm.get(el);
+  data.clickCount++;
+  wm.set(el,data)
+})
+wm.get(el); //有值
+el.parentNode.removeChild(el);
+wm.get(el); //有值
+el = null;
+wm.get(el); //undefined
+```
+
+---
+
+
+
+## 十二、Iterator、for...of 循环
+
+### Iterator概述
+
+- 为不同的数据结构（Array，Object，Map，Set）提供统一的访问机制，任何数据只要部署Iterator接口就可以遍历
+- 使数据结构的成员能够按照某种次序排序
+- Iterator的遍历过程
+  - 创建一个指针对象，指向当前的数据结构的起始位置（Iterator本质就是一个指针对象）
+  - 第一次调用指针对象的next方法，可以将指针指向数据结构的第一个成员位置，以此类推，知道结束位置
+  - 每一次调用都会返回数据结构当前成员的值 `value` 和 `done` 属性表示是否结束
+
+### 数据结构的默认Iterator接口
+
+- 当使用 `for-of` 循环遍历某种数据结构时，会自动寻找`Symbol.iterator` 属性，此方法会返回当前数据结构默认的遍历器生成函数，这是一个预订好的类型为Symbol的特殊值，需使用`[]` 
+- 数组、类似数组的对象、Map和Set解构具备原生`iterator` 接口
+
+```javascript
+let arr = [1,2];
+let iter = arr[Symbol.iterator]();
+iter.next(); //Object {value: 1, done: false}
+iter.next(); //Object {value: 2, done: true}
+iter.next(); //Object {value: undefined, done: true}
+```
+
+> 本质上，遍历器是一种线性处理，对于任何非线性的数据结构，部署遍历器接口就等于部署一种线性转换
+
+```javascript
+class RangeIterator{
+  constructor(start,stop){
+    this.vaule = start;
+    this.stop = stop;
+  }
+  [Symbol.iterator](){
+    return this;
+  }
+  next(){
+    ....
+  }
+}
+```
+
+> 对于类似数组的对象（有length属性），部署Iterator接口就是Symbol.iterator直接引用数组的Iterator接口
+
+- ### ​
