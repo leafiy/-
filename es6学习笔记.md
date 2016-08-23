@@ -1431,6 +1431,718 @@ class RangeIterator{
 }
 ```
 
-> 对于类似数组的对象（有length属性），部署Iterator接口就是Symbol.iterator直接引用数组的Iterator接口
+> 对于类似数组的对象（存在数值键名和有length属性），部署Iterator接口就是Symbol.iterator直接引用数组的Iterator接口
 
-- ### ​
+
+
+### 字符串的Iterator接口
+
+```javascript
+let str = 'dashabi';
+typeof str[Symbol.iterator]; //function
+let iter = str[Symbol.iterator]();
+iter.next();
+```
+
+### Iterator接口与Generator函数
+
+- 只需yield返回每一步需要返回的值
+
+### 遍历器对象的return()、throw()
+
+- 如果自己编写遍历器对象生成函数，必须部署 `next()` 方法，`return()` `throw()` 是可选的
+- 如果 `for…of` 循环提前退出（出错或break、continue语句），就会调用 `return()` 方法
+
+### for…of循环
+
+#### 数组
+
+- 用于代替 `forEach` ，且只返回有数字索引的属性
+
+#### Map和Set
+
+- 遍历的顺序是按照成员被添加进结构的顺序，Set返回值，Map返回键值对应的数组
+
+```javascript
+for (let pair of map){
+  console.log(pair); //['aa','a']
+}
+for (let [key,value] of map){
+  console.log(key,value); //aa,a
+}
+```
+
+#### 类似数组的对象
+
+- 包括字符串、NodeList、arguments，没有Iterator接口时可以先转为数组
+
+#### 对象
+
+- 使用 `Object.keys()` 获得键名数组，再遍历这个数组
+
+```javascript
+for (let key of Object.keys(obj)){
+  console.log(`key is ${key} valule is ${obj[key]}`)
+}
+jQuery.prototype[Symbol.iterator] = Array.prototype[Symbol.iterator]; //遍历Jquery对象
+//使用Generator函数重新包装对象
+function* entries(obj){
+  for (let key of Object.keys(obj)){
+    yield [key,obj[key]];
+  }
+}
+for (let [key,value] of entries(obj)){
+  console.log(key,value)
+}
+```
+
+
+
+---
+
+
+
+## 十三、Generator函数
+
+### 基本概念
+
+- 从语法上可以理解为状态机，封装了多个内部状态，执行Generator函数会返回一个遍历器对象
+- 调用Generator函数后，该函数并不执行，也不返回运行结果，而是一个**指向内部状态的指针对象**，之后需使用 `next()` 方法使指针移到下一个状态
+- Generator函数是分段执行，yield语句是暂停执行的标记
+
+### yield语句
+
+- 遍历器对象的 `next()` 方法的运行逻辑
+  - 遇到yield语句就暂停执行后面的操作，并将紧跟在yield语句后的表达式的值作为返回的对象的的value属性
+  - 下一次调用 `next()` 方法时继续往下执行，知道遇到下一条yield语句
+  - 如果没有遇到新的yield语句，就一直运行到函数结束，直到return语句，并将return后的表达式的值返回为value属性
+  - 如果没有return语句，则返回对象的value属性为undefined
+- 当Generator函数没有yield语句时，为一个单纯的暂缓执行函数
+
+### next方法的参数
+
+- `next()` 方法可以接受一个参数，该参数会被当做上一条yield语句的返回值（由于yield只返回紧跟的表达式，可以将yield语句和表达式赋值给接受参数的变量，下次next时传入）
+- Generator函数从暂停到恢复运行，其中的上下文状态是不变的，通过 `next()` 参数方法就可以在Generator函数运行后继续向函数体内注入值，实现Generator函数运行的不同阶段，从外部向内部注入不同的值，从而调整函数的行为
+- 只有第二次调用 `next()` 方法才可以有参数，第一次调用的参数会被忽略
+
+```javascript
+function* f(){
+  for (let i=0;true;i++){
+    var reset = yield i;
+    if(reset){
+      i=-1;
+    }
+  }
+}
+let g = f(); //必须将Generator函数赋值给某个变量后调用
+g.next(); //{value:0,done:false}
+g.next(); //{value:1,done:false}
+g.next(true); //{value:0,done:false}
+
+function* f(x){
+  let y = 2 * (yield (x+1));
+  let z = yield (y/3);
+  return (x+y+z);
+}
+let a = f(5);
+a.next(); //Object {value: 6, done: false}
+a.next(); //Object {value: NaN, done: false}，根据上下文，在第二个yield语句后面y是undefined
+let b = f(5);
+b.next(); //Object {value: 6, done: false}
+b.next(12); //Object {value: 8, done: false}，y=24
+b.next(13); ////Object {value: 42, done: true} y=24,x=5
+```
+
+### for…of循环
+
+- `for…of` 循环可以自动遍历Generator函数，不需要再调用 `next()` 方法，当返回对象的 `done` 属性为 `true` 时终止循环
+- `for…of` 循环、`...` 扩展运算符、解构赋值、`Array.from()` 方法内部调用的都是遍历器接口，所以可以将Generator函数返回的Iterator对象作为参数
+
+```javascript
+function* f() {
+  let [p, c] = [0, 1]
+  for (;;) {
+    [p, c] = [c, p + c];
+    yield c;
+  }
+}
+for (let n of f()){
+	if(n>1000) break;
+	console.log(n)
+}
+
+function* numbers(){
+  yield 1;
+  yield 2;
+  return 3;
+  yield 4;
+}
+[...numbers()]; //[1, 2]
+Array.from(numbers()); //[1, 2]
+let [x,y] = numbers(); //x:1,y:2
+
+//通过Generator函数为object增加遍历接口(或者将Generator函数加到对象的Symbol.iterator属性)
+function* objectEntries(obj){
+  let propKeys = Reflect.ownKeys(obj);
+  for (let key of propKeys){
+    yield [key,obj[key]]
+  }
+}
+let o = {a:1,b:2,c:3}
+for(let n of objectEntries(o)){console.log(n)}; //["a", 1],["b", 2],["c", 3]
+```
+
+### Generator.prototype.throw()
+
+- 在Generator函数内部没有 `try-catch` ，那么 `throw` 方法抛出的错误将被外部的 `try-catch` 代码块捕获
+- 内部部署了 `try-catch` ，遍历器的 `throw` 方法抛出错误不影响下一次遍历，无 `try-catch` 则会结束函数运行
+
+```javascript
+let g = function* (){
+  while(true){
+    try{
+      yield;
+    }catch(e){ //在这里获取
+      if(e != 'a') throw e; //将b抛出给外部，a在内部捕获
+      console.log(`内部捕获 ${e}`)
+    }
+  }
+}
+let i = g();
+i.next();
+try{
+  i.throw('a'); //在函数体外抛出错误
+  i.throw('b');
+}catch(e){
+  console.log(`外部捕获 ${e}`)
+}
+//内部捕获 a
+//外部捕获 b
+
+try{
+  foo.next();
+}catch(e){
+  //Generator函数内部抛出的错误可以在外部捕获
+}
+```
+
+### Generator.prototype.return()
+
+- 使Generator函数返回给的值，并终结遍历
+- ~~如果函数内部有 `try-finally` ，那么 `return` 方法会推迟到 `finally` 代码块执行完成再执行~~
+
+### yield* 语句
+
+- 用来在一个Generator函数中调用另一个Generator函数，实质是返回紧跟表达式的遍历器对象
+- 等同于在内部部署一个 `for…of` 循环
+
+```javascript
+function* bar(){
+  yield 'a'
+}
+function* foo(){
+  yield 'b';
+  bar(); //并没有效果
+  yield* bar(); //可以执行，相当于将bar中的yield语句复制来
+}
+
+function* concat(iter1,iter2){
+  yield* iter1;
+  yield* iter2;
+}
+//等同于以下
+function* concat(iter1,iter2){
+  for (let val of iter1){
+    yield val
+  }
+  for (let val of iter2){
+    yield val
+  }
+}
+
+function* gen(){
+  yield [1,2,3,4]; //返回[1,2,3,4]
+  yield* [1,2,3,4]; //返回成员的遍历
+}
+```
+
+### Generator函数的this
+
+- Generator函数总是返回一个遍历器，这个遍历器是Generator函数的实例，也继承了Generator函数的prototype对象上的方法
+
+### Generator的应用
+
+#### 异步操作的同步化表达
+
+- 可以把异步操作写在yield语句里面，等到 `next()` 方法执行时再往后执行
+
+```javascript
+function* main() {
+    let result = yield request('url');
+    let resp = JSON.parse(request);
+}
+function request(url) {
+    ajaxFunction(url, function(response) {
+        it.next(response);
+    })
+}
+let it = main();
+it.next();
+```
+
+#### 控制流管理
+
+```javascript
+//优化多步操作的回调函数
+function step1() {
+    let value = `running ${arguments.callee.name}`
+    console.log(value)
+    return value
+}
+function step2(value) {
+    val = `running ${arguments.callee.name}`
+    console.log(val)
+    return val
+}
+function step3(value) {
+    value = `running ${arguments.callee.name}`
+    console.log(value)
+    return value
+}
+function step4(value) {
+    value = `running ${arguments.callee.name}`
+    console.log(value)
+    return value
+}
+function* runSteps() {
+    try {
+        let value1 = yield step1();
+        let value2 = yield step2(value1);
+        let value3 = yield step3(value2);
+        let value4 = yield step4(value3);
+    } catch (e) {
+        throw new TypeError(e)
+    }
+}
+scheduler(runSteps());
+function scheduler(task) {
+    let taskObj = task.next(task.value);
+    if (!taskObj.done) {
+        task.value = taskObj.value;
+        scheduler(task)
+    }
+}
+//running step1
+//running step2
+//running step3
+//running step4
+```
+
+#### 为任意对象部署Iteartor接口
+
+```javascript
+function* iterEntries(obj){
+	let keys = Object.keys(obj);
+	for (let i = 0; i < keys.length; i++) {
+		let key = keys[i];
+		yield [key,obj[key]]
+	}
+}
+let o = {a:1,b:2};
+for([k,v] of iterEntries(o)){console.log(k,v)};
+//a 1
+//b 2
+```
+
+#### 作为数据结构
+
+- 因为可以返回一系列值，就可以对任意表达式提供类似数组的接口
+
+```javascript
+function* dos(){
+  yield 1;
+  yield 2;
+}
+for (task of dos()){
+  //task是一个函数，可以像回调函数一样使用
+}
+```
+
+---
+
+
+
+## 十四、Promise
+
+### Promise含义
+
+> Promise就是一个用来传递异步操作消息的对象，它代表某个未来才会知道结果的事件
+
+- Promise对象不受外界影响，Promise对象代表一个异步操作有3种状态：pending、resolved、rejected，只有异步操作的结果可以决定当前的状态
+- Promise状态一旦改变就不再次改变，任何时候都可以得到这个结果
+
+#### 基本用法
+
+- Promise构造函数接受一个函数作为参数，该函数的两个参数分别是 `resolve` 和 `reject` 
+- `resolve` 函数作用是将Promise对象从Pending变成Resolved，并在异步操作成功时调用，并将异步操作的结果作为参数传递出去
+- `reject` 函数作用是从Pending变成Rejected，在异步操作失败时调用，并将异步操作报出的错误作为参数传递出去
+- Promise实例生成以后，可以用 `then` 方法分别指定 Resolved和Rejected状态的回调函数
+
+```javascript
+let p = new Promise(function(resolve,reject){
+  //..do something
+  if(/*异步操作成功*/){
+    resovle(value)
+  }else{
+    reject(value)
+  }
+})
+
+p.then(function(value){
+  //success
+},function(value){
+  //failure
+});
+
+function loadImgAsync(url){
+  return new Promise(function(resolve,reject){
+    let img = new Image();
+  	img.onload = function(){
+      resolve(img)
+  	}
+    img.onerror = function(){
+      reject(new Error(`img ${url} load failed`))
+    }
+    img.src = url;
+  })
+}
+```
+
+### Promise.prototype.then()
+
+- 为Promise实例添加状态改变时的回调函数
+- `then()` 方法返回的是一个新的Promise实例，可以采用链式写法
+
+```javascript
+getJSON('url').then(
+	post => getJSON(post.url)
+).then(
+	comment => console.log('Resolved :' + comment),
+  	err => console.log('Rejected :' + err)
+)
+```
+
+### Promise.prototype.catch()
+
+- `Promise.prototype.catch()` 是 `.then(null,rejection)` 的别名，用于指定发生错误时的回调函数
+- Promise对象的错误会一直向后传递直到被捕获位置，但不会传递到外层代码
+
+> 不要在then方法中定义Rejected状态的回调函数，而应总是使用catch方法
+
+### Promise.all()
+
+- 用于将多个Promise实例包装成一个新的Promise实例
+
+```javascript
+let p = [1,2,3].map(function(id){
+  return getJSON('post/' + id + '.json');
+})
+Promise.all(p).then(function(posts){
+  
+}).cathc(function(err){
+  
+})
+```
+
+### Promise.resolve()
+
+- 将对象转为Promise对象
+
+```javascript
+Promise.resolve('foo');
+//等同于
+new Promise(resolve => resolve('foo'));
+```
+
+### Promise.rejcet()
+
+- 返回状态为 Rejected的Promise实例
+
+### Promise.prototype.done() 自建
+
+- 如果Promise实例最后一个方法抛出错误，有可能无法捕获，自建一个 `done` 方法处于回调链的尾端
+
+```javascript
+Promise.prototype.done = function(onFullfilled,onRejected){
+  this.then(onFullfilled,onRejected).catch(function(reason){
+    setTimeout(()=> {throw reason},0)
+  })
+}
+```
+
+### Promise.prototype.finally() 自建
+
+- `finally()` 方法用于指定不管Promise对象最后状态都会执行的操作，接收一个普通回调函数作为参数，不管怎样都会执行
+
+```javascript
+Promise.protoype.finally = function(callback){
+  let P = this.constructor;
+  return this.then(
+  	value => P.resolve(callback()).then(()=>value),
+    reason => P.reject(callback()).then(()=>{throw reason})
+  )
+}
+```
+
+---
+
+
+
+## 十五、Class
+
+### 基本语法
+
+- 内部所有方法都是不可枚举的
+
+```javascript
+class Point{
+  constructor(x,y){
+    this.x = x;
+    this.y = y;
+  } //方法之间不要加逗号
+  toString(){ 
+    return `( ${this.x} , ${this.y})`
+  }
+}
+let p = new Point(1,2);
+Object.keys(Point.prototype); //[]
+Object.getOwnPropertyNames(Point.prototype); //["constructor", "toString"]
+```
+
+#### constructor方法
+
+- 类的默认方法，通过 `new` 命令生成对象实例时自动调用该方法，一个类必须有 `constructor` 方法，如果没有定义，则会自动添加一个空的 `constructor` 方法
+- `constructor` 方法默认返回实例对象即 `this` ，也可以手动返回其他对象
+
+#### 实例对象
+
+- 使用 `new` 命令，忽略 `new` 会报错
+- 实例的属性除非显式的定义在其本身（即`this` ）上，否则都是定义在原型（即Class）上
+- ~~可以通过 `__proto__`  属性为Class添加方法~~
+
+```javascript
+p.hasOwnProperty('x'); //true
+p.hasOwnProperty('toString'); //false
+p.__proto__.hasOwnProperty('toString'); //true
+p.__proto__.printName = function(){}
+```
+
+#### Class表达式
+
+```javascript
+let MyClass = class Me{ //类名是MyClass，Me只在内部代码可用，指当前类
+  getClassName(){
+    return Me.name;
+  }
+}
+let c = new MyClass();
+c.name; //Me
+Me.name; //Me is not undefined
+
+//立刻执行的Class
+let person = new class{
+  constructor(name){
+    this.name = name;
+  }
+  sayName(){
+    console.log(this.name)
+  }
+}('shabi')
+person.sayName(); //shabi，person是一个立刻执行的Class实例
+```
+
+- 不存在变量提升，类的定义必须在使用前
+- Class内部默认严格模式，不需使用 `use strict` 
+
+### Class的继承
+
+#### 基本用法
+
+- Class之间可以用 `extends` 关键字实现继承
+- 在子类内部使用 `super` 指代父类的实例（即父类的 `this`）
+- **子类必须在 `constructor` 方法中调用 `super` 方法，否则新建实例时会报错，因为子类没有自己的 `this` 对象，而是继承父类的 `this` ，然后对其进行加工，如果不调用 `super` 方法，子类就得不到 `this` 对象**
+- 使用 `Object.getPrototypeOf()` 方法可以获取父类
+
+```javascript
+//ColorPoint 通过extends继承了Point类的所有属性和方法
+class ColorPoint extends Point{
+  constructor(x,y,color){
+    super(x,y); //通过super调用父类的x,y
+    this.color = color;
+  }
+  toString(){
+    return `${this.color} ${super.toString()}`
+  }
+};
+Object.getPrototypeOf(ColorPoint) === Point; //true
+```
+
+#### 类的prototype属性和 \_\_proto\_\_属性
+
+- 子类的 \_\_proto\_\_ 属性表示构造函数的继承，总是指向父类
+- 子类的 prototype 属性的 \_\_proto\_\_  属性表示方法的继承，总是指向父类的 prototype 属性
+
+```javascript
+class A{};
+class B extends A {};
+B.__proto__ === A; //true
+B.prototype.__proto__ === A.prototype; //true
+```
+
+#### extends的继承目标
+
+- `extends` 关键字后面可以跟多种类型的值，只要其有 `prototype` 属性就可以被继承
+
+### 原生构造函数的继承
+
+- ES6允许自定义原生数据结构的子类。`extends` 关键字可用来继承原生的构造函数
+
+```javascript
+class VersionedArray extends Array{
+  constructor(){
+    super();
+    this.histroy = [[]];
+  }
+  commit(){
+    this.histroy.push(this.slice());
+  }
+  revert(){
+    this.splice(0,this.length,...this.histroy[this.histroy.length - 1]);
+  }
+}
+let x = new VersionedArray();
+x.push(1);
+x.push(2);
+x; //[1,2]
+x.histroy; //[[]]
+x.commit();
+x.histroy; //[[],[1,2]]
+x.push(3);
+x; //[1,2,3]
+x.revert();
+x; //[1,2]
+```
+
+### Class的getter和setter
+
+- Class内部可以使用`get` 和 `set` 关键字对某个属性设置拦截存、读行为
+
+```javascript
+class MyClass{
+  constructor(){
+    //...
+  }
+  get prop(){
+    return 'getter'
+  }
+  set prop(val){
+    console.log(`setter ${val}`)
+  }
+}
+let m = new MyClass();
+m.prop; //getter
+m.prop = 'shabi'; //setter shabi
+```
+
+### Class的Generator方法
+
+```javascript
+class Foo{
+  constructor(...args){
+    this.args = args;
+  }
+  * [Symbol.iterator](){
+    for(let arg of this.args){
+      yield arg;
+    }
+  }
+}
+for (let x of new Foo('a','b')){
+  console.log(x)
+}
+//a
+//b
+```
+
+### Class的静态方法
+
+- 如果在Class内部的方法前加上 `static` 关键字，表示该方法不会被实例继承，而是直接通过类调用
+- 父类的方法可以被子类继承，并且可以调用 `super` 对象
+
+```javascript
+class Foo{
+  static classMethod(){
+    return 'hello';
+  }
+}
+Foo.classMethod(); //hello
+let foo = new Foo();
+foo.classMethod(); //TypeError:undefined is not a function
+
+class Bar extends Foo{};
+Bar.classMethod(); //hello
+
+class Baz extends Foo{
+  static classMethod(){
+    return super.classMethod() + ', too'
+  }
+}
+Baz.classMethod(); //"hello, too"
+```
+
+### Class的静态属性
+
+- 静态属性指Class本身的属性（Class.propName） 而不是定义在 `this` 上的属性
+
+```javascript
+class A{};
+A.propname = 'aa';
+A.propname; //aa
+```
+
+### new.target属性
+
+- 返回`new` 命令所做用的构造函数，如果不是通过`new` 命令调用的，返回undefined，这个属性可以用于确定构造函数是怎么调用的
+- 子类继承父类时 `new.target` 会返回子类
+
+```javascript
+class A{
+	constructor(){console.log(new.target === A)}
+}
+let a = new A(); //true
+```
+
+### Mixin模式
+
+> Mixin模式指将多个类的接口混入(mix in)另一个类
+
+```javascript
+function mix(...mixins){
+  class Mix{};
+  for (let mixin of mixins){
+    copyProperties(Mix,mixin);
+    copyProperties(Mix.prototype,mixin.prototype);
+  }
+}
+function copyProperties(target,source){
+  for (let key of Reflect.ownKeys(source)){
+    if(key !== 'constructor' && key !== 'prototype' && key !== 'name'){
+      let desc = Object.getOwnPropertyDescriptor(source,key);
+      Object.defineProperty(target,key,desc);
+    }
+  }
+}
+class DistributedEdit extends mix(){}
+//mix函数可以将多个对象合并为一个类，使用时只需继承这个类即可
+```
+
