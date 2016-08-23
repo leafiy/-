@@ -2146,3 +2146,46 @@ class DistributedEdit extends mix(){}
 //mix函数可以将多个对象合并为一个类，使用时只需继承这个类即可
 ```
 
+---
+
+
+
+## 十六、module
+
+> ES6模块不是对象，而是通过 `export` 命令显式指定输出的代码，输入时也采用静态命令形式
+
+### export命令
+
+- 用于规定模块的对外接口，位置必须在模块顶层，不能处于块级作用域内，输出的值是动态绑定
+- 一个模块就是一个独立文件，外部无法获取文件内部所有的变量，需要使用 `export` 命令输出该变量
+- `export` 命令可以输出变量、函数、类
+- 使用 `as` 关键字可以重命名对外接口
+
+```javascript
+let name = 'shabi';
+let age = '30';
+export {
+  name as NAME,
+  age
+}
+setTimeout(() => age = '40',500); //执行时age为30，500ms后变成40
+```
+
+### import命令
+
+- 使用 `export` 命令定义了模块对外接口后，其他js文件就可以通过 `improt` 命令加载这个模块
+- `as` 命令可以重命名输入的变量
+- `import` 命令具有提升效果，提升到整个模块的头部执行
+- `*` 命令整体加载模块
+
+### module命令
+
+- 取代 `import *` 达到整体输入模块作用
+
+```javascript
+module o from '1.js';
+```
+
+### export default命令
+
+- 为模块指定默认输出，输入时不用指定名称
